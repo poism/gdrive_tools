@@ -1,6 +1,9 @@
 import csv
 import string
 
+# This script is intended to compare two csv outputs from poism_getFolderFileList.sh
+# This will output a final csv that shows all missing files.
+
 f1Name = 'Compared_Nas-and-DB_20171119_OldOnly.csv'
 f1 = file(f1Name, 'r')
 f2Name = 'PoismImagesNAS-and-DB_20171119.completelists.csv'
@@ -14,13 +17,13 @@ outFiles = csv.writer(f3)
 outMissing = csv.writer(f4)
 
 
-# columns: 
+# columns:
 # 0 = "FullPath",
 
 includedCols = [ 0 ]
 
 def getFilenamePath(fullPath):
-    fileName,path = "",[]    
+    fileName,path = "",[]
     res = fullPath.split("/")
 
     if len(res) == 1:
@@ -34,7 +37,7 @@ def getFilenamePath(fullPath):
 
 
 r = 1
-cnt0=0 #identical 
+cnt0=0 #identical
 cnt1=0 #found
 cnt2=0 #not found
 
@@ -80,5 +83,3 @@ outFiles.writerow( [ "!", "!", "SUMMARY", finalMsg ] )
 f1.close()
 f2.close()
 f3.close()
-
-

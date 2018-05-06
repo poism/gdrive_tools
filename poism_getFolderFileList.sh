@@ -4,8 +4,10 @@
 #If on the first run through of find . it results in folders not found
 #it does a second pass by cd'ing directly into the folders that weren't found...
 #This perhaps would also be useful for autofs type systems.
+#This will output a complete list of files from the inputDir and output them as completelist.txt and completelist.csv
 
-theDate="`date +%Y%m%d_%H%H%S`"
+
+theDate="`date +%Y%m%d_%H%M%S`"
 #PoismImagesNAS_inputDir="/home/poism/poismdisk2017/PoismGoogleBackup/FinalImages/"
 #PoismImagesOLD_
 inputDir="/home/poism/poismdisk2017/PoismGoogleBackup/PoismDrive/!PoismImages"
@@ -61,4 +63,3 @@ do
         fi
 
 done < "${completeList}"
-
