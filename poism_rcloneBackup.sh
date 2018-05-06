@@ -12,6 +12,7 @@ basename="${rcloneremote}_${thedate}"
 infile="${tmpdir}/${basename}.txt"
 outfile="${tmpdir}/${basename}_foldersOnly.txt"
 splitbasename="${tmpdir}/${basename}_split_"
+logfile="${tmpdir}/{basename}.log"
 
 mkdir -p "${tmpdir}"
 
@@ -38,9 +39,9 @@ main_menu() {
 		for filename in ${splitbasename}*; do
 			while read d; do
 				target="${synctarget}/${d}"
-				echo "------------------ Backing up ${d} ------------------"
+				echo "BACKUP: ${d}" | tee -a ${logfile}
 				mkdir -p "${target}"
-				rclone sync "${rcloneremote}:/${d}" "${target}"
+				rclone sync "${rcloneremote}:/${d}" "${target}" --log-file=${logfile}
 			done<${filename}
 		done
 		main_menu
