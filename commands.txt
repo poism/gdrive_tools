@@ -1,0 +1,8 @@
+sort PoismImages_20171111_171747.completelist.csv >PoismImages_20171111_171747.completelist.csv.sorted
+sort PoismImagesNAS_20171113_232316.completelist.csv >PoismImagesNAS_20171113_232316.completelist.csv.sorted
+comm -23 PoismImages_20171111_171747.completelist.csv.sorted PoismImagesNAS_20171113_232316.completelist.csv.sorted > PoismImages_20171111-ONLY-NOT-NAS.txt
+
+cat PoismImages_20171111-ONLY-NOT-NAS.txt | grep -v Icon>PoismImages_20171111-ONLY-NOT-NAS.txt
+comm -23 PoismImages_20171111_171747.completelist.txt.sorted PoismImagesNAS_20171114_000017.completelist.txt.sorted | grep -v Icon > Compared_GD20171111-vs-NASDL20171114.txt
+diff PoismImages_20171111_171747.completelist.txt.sorted PoismImagesNAS_20171114_000017.completelist.txt.sorted | grep -v Icon | grep '<' > Diffed_GD20171111-vs-NASDL2017114-GDONLY.txt 
+diff PoismImages_20171111_171747.completelist.txt.sorted PoismImagesNAS_20171114_000017.completelist.txt.sorted | grep -v Icon | grep '>' > Diffed_GD20171111-vs-NASDL2017114-NASONLY.txt 
