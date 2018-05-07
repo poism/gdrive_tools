@@ -68,12 +68,16 @@ sort "${fileList}" > "${completeList}"
 
 while read e
 do
-        if [[ -f "${e}" ]]; then
-                echo "FILE,${e}" >> "${csv}"
+	if [ "${e}" == "." ]; then
+		continue
+	fi
+  if [[ -f "${e}" ]]; then
+  	checksum=($(md5sum "${e}"))
+    printf "FILE,${checksum},${e}\n" | tee -a "${csv}"
 	elif [[ -d "${e}" ]]; then
-                echo "FOLDER,${e}" >> "${csv}"
+    printf "FOLDER,'',${e}\n" | tee -a "${csv}"
 	else
-		echo "UNKNOWN,${e}" >> "${csv}"
-        fi
+		printf "UNKNOWN,'',${e}\n" | tee -a "${csv}" #this wont happen
+  fi
 
 done < "${completeList}"

@@ -1,21 +1,23 @@
 import csv, string, datetime
 
 # This script is intended to compare two csv outputs from poism_getFolderFileList.sh
-# This will output a final csv that shows all missing files, or duplicate file names in multiple locations, etc.
-# For instance, use this to compare a current folder structure with an old backup of the same hierarchy... or to ensure migration was successful.
+# This will output a final csv that shows items all missing files, or duplicate file names in multiple locations, etc.
+# Note, files existing in searchFile but not existing in srcFile are currently completely ignored... it's a one way verification.
+# For instance, use this to compare a current folder structure with an old backup of the same hierarchy... or to check data migration.
+# Can for static backups, can also be checked against old completelist.csv to detect bitrot.
 
 theDate = datetime.datetime.now().strftime("%Y%m%d_%H%M%S");
 
-srcFileName = 'src.completelists.csv' # This MUST be the LONGER filelist csv! Each line in this file will be searched for in the second file.
+srcFileName = 'src.completelist.csv' # This MUST be the LONGER filelist csv! Each line in this file will be searched for in the second file.
 srcFile = file(srcFileName, 'r')
 
-searchFileName = 'search.completelists.csv' # This is the shorter file list that we are searching for matches in...
+searchFileName = 'search.completelist.csv' # This is the shorter file list that we are searching for matches in...
 searchFile = file(searchFileName, 'r')
 
 outFileName = "comparison-"+theDate+".csv"
 outFile = file(outFileName, 'w')
 
-outMissingFileName = "comparison-"+theDate+"-MISSING.csv"
+outMissingFileName = "comparison-"+theDate+".missing.csv"
 outMissingFile = file(outMissingFileName, 'w')
 
 srcList = csv.reader(srcFile) #this is the longer list, it is read on the fly
@@ -23,9 +25,12 @@ masterList = list(csv.reader(searchFile)) #load into ram
 outWriter = csv.writer(outFile)
 outMissingWriter = csv.writer(outMissingFile)
 
+checkHash = True
+
 # Columns as defined in the srcFile and searchFile CSVs.
 typeCol = 0
-pathCol = 1 # note paths should be formatted like the result of a "find ." command.
+hashCol = 1
+pathCol = 2 # note paths should be formatted like the result of a "find ." command.
 
 def getFilenamePath(fullPath):
     fileName,path = "",[]
@@ -39,53 +44,76 @@ def getFilenamePath(fullPath):
 
     return fileName,path
 
-def getOutputRow(srcRowNum="", status="", matches="", type="", src="", des="" ):
+def getOutputRow(srcRowNum="", status="", matches="", identical="", type="", src="", des="" ):
     if srcRowNum == 0:
-        return list("0", "SrcRowNum", "Status", "Matches", "Type", srcFileName, searchFileName)
+        return list( [ "Src#", "Type", "Matches", "Identical", "Status", srcFileName, searchFileName ] )
     elif srcRowNum == "summary":
-        return list("", "", "", "", "SUMMARY", "status", "" )
+        return list( [ "", "", "", "", "SUMMARY", status, "" ] )
     else:
-        return list( [str(srcRowNum), status, str(matches), type, src, des] )
+        return list( [ str(srcRowNum), type, str(matches), str(identical), status, src, des ] )
 
-r = 1
-cnt0=0 #identical
-cnt1=0 #found
-cnt2=0 #not found
+tot_row = 1
+tot_identical = 0
+tot_match = 0
+tot_missing = 0
 
-outWriter.writerow( getOutputRow(0) )
+headerRow = getOutputRow(0)
+print(headerRow)
+outWriter.writerow( headerRow ) #populate header
+outMissingWriter.writerow( headerRow ) #populate header
 
 for srcRow in srcList:
 	fileName,path = getFilenamePath(srcRow[pathCol])
-	missing = True
+	cnt_match = 0
+	cnt_identical=0
+	results = []
 	for masterRow in masterList:
-		found = 0
-		if masterRow[srcPathCol] == srcRow[pathCol]:
-			cnt0 = cnt0+1
-			found = found+1
-			res = "IDENTICAL"
+		res = "MISSING"
+		if checkHash and srcRow[typeCol] == "FILE" and srcRow[hashCol] and srcRow[hashCol] == masterRow[hashCol]:
+			res = "HASH_MATCH"
+			cnt_identical += 1
+			cnt_match += 1
+
+		if srcRow[pathCol] == masterRow[pathCol]:
+			#path match
+			if res == "HASH_MATCH":
+				res = "IDENTICAL"
+			else:
+				cnt_match += 1
+				res = "CHANGED" if checkHash else "PATH_MATCH"
 		else:
 			oFileName,oPath = getFilenamePath(masterRow[pathCol])
 
 			if fileName == oFileName and srcRow[typeCol] == masterRow[typeCol]:
-				cnt1 = cnt1+1
-				found = found+1
-				res = "FOUND"
-			else:
-				cnt2 = cnt2+1
-				res = "MISSING"
+				#name match
+				if res == "HASH_MATCH":
+					res = "MOVED"
+				else:
+					res = "NAME_MATCH"
+
+			elif res == "HASH_MATCH":
+					res = "RENAMED"
 
 		if res != "MISSING":
-			missing = False
-			resRow = getOutputRow(r, res, found, srcRow[pathCol], srcRow[pathCol], masterRow[pathCol] )
-			print(resRow)
-			outWriter.writerow(resRow)
+			resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], masterRow[pathCol] ]
+			#resRow = getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol], masterRow[pathCol] )
+			#print(resRow)
+			results.append(resData)
 
-	if missing == True:
-		outMissingWriter.writerow( getOutputRow(r, res, found, srcRow[pathCol] ) )
+	tot_row += 1
+	tot_match += cnt_match
+	tot_identical += cnt_identical
 
-	r = r + 1
+	if cnt_match == 0:
+		outMissingWriter.writerow( getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol] ) )
+	else:
+		for r in results:
+			row = getOutputRow(r[0], r[1], cnt_match, cnt_identical, r[2], r[3], r[4])
+			print(row)
+			outWriter.writerow( row )
 
-finalMsg = "Count: Identical = "+str(cnt0)+", Found = "+str(cnt1)+", Missing = "+str(cnt2)
+
+finalMsg = "TOTALS: Identical = "+str(tot_identical)+" Matches = "+str(tot_match)+" Missing = "+str(tot_row - tot_match)
 print(finalMsg)
 outWriter.writerow( getOutputRow("summary", finalMsg ) )
 
