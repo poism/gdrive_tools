@@ -1,8 +1,10 @@
 import csv, string, datetime
 
 # This script is intended to compare two csv outputs from poism_getFolderFileList.sh
-# This will output a final csv that shows items all missing files, or duplicate file names in multiple locations, etc.
-# Note, files existing in searchFile but not existing in srcFile are currently completely ignored... it's a one way verification.
+# This will output a final csv that compares the srcFile to the searchFile.
+# Results include: PATH_MATCH, IDENTICAL, MOVED, RENAMED, CHANGED, and MISSING (in the searchFile).
+# Note, files existing in searchFile but NOT in the srcFile are completely ignored
+# - this is a one-way verification only, just run again and swap the srcFile and the searchFile if you wish...
 # For instance, use this to compare a current folder structure with an old backup of the same hierarchy... or to check data migration.
 # Can for static backups, can also be checked against old completelist.csv to detect bitrot.
 
@@ -83,7 +85,7 @@ for srcRow in srcList:
 				cnt_match += 1
 				res = "CHANGED" if checkHash else "PATH_MATCH"
 			else:
-				#matched paths do not count, only matched files
+				cnt_match += 1
 				res = "PATH_MATCH"
 		else:
 			oFileName,oPath = getFilenamePath(masterRow[pathCol])
