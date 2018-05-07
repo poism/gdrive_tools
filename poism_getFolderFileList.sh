@@ -1,24 +1,38 @@
 #!/bin/sh
 #Po@poism.com
-#This script was intended to output file list from Google FileStream
-#If on the first run through of find . it results in folders not found
-#it does a second pass by cd'ing directly into the folders that weren't found...
-#This perhaps would also be useful for autofs type systems.
-#This will output a complete list of files from the inputDir and output them as completelist.txt and completelist.csv
+#This script was intended to output file list from Google FileStream (or any directory)
+#It outputs into a csv sorted by path, with a column specifying if items are FOLDER or FILE..
+#Due to a weird issue I was having with File Stream where directories didn't always load:
+#If on the first run through of find . it results in folders not found, then
+#it does a second pass on those specific folders at which point they usually are loaded.
+#This perhaps would also be useful for autofs type systems?
+#Final output files are .completelist.csv and .completelist.txt
 
 
 theDate="`date +%Y%m%d_%H%M%S`"
-#PoismImagesNAS_inputDir="/home/poism/poismdisk2017/PoismGoogleBackup/FinalImages/"
-#PoismImagesOLD_
-inputDir="/home/poism/poismdisk2017/PoismGoogleBackup/PoismDrive/!PoismImages"
-outputDir=/home/poism/poismdisk2017/DriveRecovery/
-baseName=${outputDir}PoismImagesOLD_${theDate}
-fileList=${baseName}.list1.txt
-updatedList=${baseName}.list2.txt #list from the folders that triggered errors first run through
-errorList=${baseName}.errors.txt
-completeList=${baseName}.completelist.txt
-csv=${baseName}.completelist.csv
+thisDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+if [ "${1}" == "" ]; then
+  echo "Arg missing: please pass a directory path to process!"
+  exit
+fi
+if [ -d "${1}" ]; then
+  inputDir="${1}" # the directory to process
+else
+  echo "Error: ${1} is not a directory!"
+  exit
+fi
+
+inputDirName=`basename "${inputDir}"`
+outputDir="${thisDir}/output/${inputDirName}"
+baseName="${outputDir}/${inputDirName}_${theDate}"
+fileList="${baseName}.list1.txt"
+updatedList="${baseName}.list2.txt" #list from the folders that triggered errors first run through
+errorList="${baseName}.errors.txt"
+completeList="${baseName}.completelist.txt"
+csv="${baseName}.completelist.csv"
+
+mkdir -p "${outputDir}"
 
 echo "input = ${inputDir}"
 echo "output = ${outputDir}"
