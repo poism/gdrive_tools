@@ -79,9 +79,12 @@ for srcRow in srcList:
 			#path match
 			if res == "HASH_MATCH":
 				res = "IDENTICAL"
-			else:
+			elif srcRow[typeCol] == "F":
 				cnt_match += 1
 				res = "CHANGED" if checkHash else "PATH_MATCH"
+			else:
+				#matched paths do not count, only matched files
+				res = "PATH_MATCH"
 		else:
 			oFileName,oPath = getFilenamePath(masterRow[pathCol])
 
@@ -96,7 +99,7 @@ for srcRow in srcList:
 					res = "RENAMED"
 
 		if res != "MISSING":
-			if not includeNameMatches or (includeNameMatches and res == "NAME_MATCH"):
+			if (includeNameMatches) or (not includeNameMatches and res != "NAME_MATCH"):
 				resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], masterRow[pathCol] ]
 				results.append(resData)
 
@@ -105,7 +108,9 @@ for srcRow in srcList:
 	tot_identical += cnt_identical
 
 	if cnt_match == 0:
-		outMissingWriter.writerow( getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol] ) )
+		row = getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol] )
+		print(row)
+		outMissingWriter.writerow( row )
 	else:
 		for r in results:
 			row = getOutputRow(r[0], r[1], cnt_match, cnt_identical, r[2], r[3], r[4])
