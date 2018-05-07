@@ -1,26 +1,31 @@
-import csv
-import string
+import csv, string, datetime
 
 # This script is intended to compare two csv outputs from poism_getFolderFileList.sh
-# This will output a final csv that shows all missing files.
+# This will output a final csv that shows all missing files, or duplicate file names in multiple locations, etc.
+# For instance, use this to compare a current folder structure with an old backup of the same hierarchy... or to ensure migration was successful.
 
-f1Name = 'Compared_Nas-and-DB_20171119_OldOnly.csv'
-f1 = file(f1Name, 'r')
-f2Name = 'PoismImagesNAS-and-DB_20171119.completelists.csv'
-f2 = file(f2Name, 'r')
-f3 = file('PYCOMPARE_20171119_PoismImagesNAS-and-DB_Compared_Nas-and-DB_OldOnly.csv', 'w')
-f4 = file('PYCOMPARE_20171119_PoismImagesNAS-and-DB_Compared_Nas-and-DB_OldOnly-MISSING.csv', 'w')
+theDate = datetime.datetime.now().strftime("%Y%m%d_%H%M%S");
 
-srcList = csv.reader(f1)
-masterList = list(csv.reader(f2)) #loading into ram
-outFiles = csv.writer(f3)
-outMissing = csv.writer(f4)
+srcFileName = 'src.completelists.csv' # This MUST be the LONGER filelist csv! Each line in this file will be searched for in the second file.
+srcFile = file(srcFileName, 'r')
 
+searchFileName = 'search.completelists.csv' # This is the shorter file list that we are searching for matches in...
+searchFile = file(searchFileName, 'r')
 
-# columns:
-# 0 = "FullPath",
+outFileName = "comparison-"+theDate+".csv"
+outFile = file(outFileName, 'w')
 
-includedCols = [ 0 ]
+outMissingFileName = "comparison-"+theDate+"-MISSING.csv"
+outMissingFile = file(outMissingFileName, 'w')
+
+srcList = csv.reader(srcFile) #this is the longer list, it is read on the fly
+masterList = list(csv.reader(searchFile)) #load into ram
+outWriter = csv.writer(outFile)
+outMissingWriter = csv.writer(outMissingFile)
+
+# Columns as defined in the srcFile and searchFile CSVs.
+typeCol = 0
+pathCol = 1 # note paths should be formatted like the result of a "find ." command.
 
 def getFilenamePath(fullPath):
     fileName,path = "",[]
@@ -34,30 +39,34 @@ def getFilenamePath(fullPath):
 
     return fileName,path
 
-
+def getOutputRow(srcRowNum="", status="", matches="", type="", src="", des="" ):
+    if srcRowNum == 0:
+        return list("0", "SrcRowNum", "Status", "Matches", "Type", srcFileName, searchFileName)
+    elif srcRowNum == "summary":
+        return list("", "", "", "", "SUMMARY", "status", "" )
+    else:
+        return list( [str(srcRowNum), status, str(matches), type, src, des] )
 
 r = 1
 cnt0=0 #identical
 cnt1=0 #found
 cnt2=0 #not found
 
-outFiles.writerow( [ "0", "Status", "Found", f1Name, f2Name ] )
+outWriter.writerow( getOutputRow(0) )
 
 for srcRow in srcList:
-	fileName,path = getFilenamePath(srcRow[0])
-	resRow = list( str(r) )
+	fileName,path = getFilenamePath(srcRow[pathCol])
 	missing = True
 	for masterRow in masterList:
-		# result columns: 0:srcRowNum, 1:status, 2: src, 3: des
 		found = 0
-		if masterRow[0] == srcRow[0]:
+		if masterRow[srcPathCol] == srcRow[pathCol]:
 			cnt0 = cnt0+1
 			found = found+1
 			res = "IDENTICAL"
 		else:
-			oFileName,oPath = getFilenamePath(masterRow[0])
+			oFileName,oPath = getFilenamePath(masterRow[pathCol])
 
-			if fileName == oFileName:
+			if fileName == oFileName and srcRow[typeCol] == masterRow[typeCol]:
 				cnt1 = cnt1+1
 				found = found+1
 				res = "FOUND"
@@ -67,19 +76,20 @@ for srcRow in srcList:
 
 		if res != "MISSING":
 			missing = False
-			resRow = list( [str(r), str(found), res, srcRow[0], masterRow[0] ] )
+			resRow = getOutputRow(r, res, found, srcRow[pathCol], srcRow[pathCol], masterRow[pathCol] )
 			print(resRow)
-			outFiles.writerow(resRow)
+			outWriter.writerow(resRow)
 
 	if missing == True:
-		outMissing.writerow( [str(r), str(found), res, srcRow[0] ] )
+		outMissingWriter.writerow( getOutputRow(r, res, found, srcRow[pathCol] ) )
 
 	r = r + 1
 
 finalMsg = "Count: Identical = "+str(cnt0)+", Found = "+str(cnt1)+", Missing = "+str(cnt2)
 print(finalMsg)
-outFiles.writerow( [ "!", "!", "SUMMARY", finalMsg ] )
+outWriter.writerow( getOutputRow("summary", finalMsg ) )
 
-f1.close()
-f2.close()
-f3.close()
+srcFile.close()
+searchFile.close()
+outFile.close()
+outMissingFile.close()
