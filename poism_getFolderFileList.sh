@@ -73,11 +73,11 @@ do
 	fi
   if [[ -f "${e}" ]]; then
   	checksum=($(md5sum "${e}"))
-    printf "FILE,${checksum},${e}\n" | tee -a "${csv}"
+    echo "F,${checksum},${e}" | tee -a "${csv}"
 	elif [[ -d "${e}" ]]; then
-    printf "FOLDER,'',${e}\n" | tee -a "${csv}"
+    echo "D,'',${e}" | tee -a "${csv}"
 	else
-		printf "UNKNOWN,'',${e}\n" | tee -a "${csv}" #this wont happen
+		echo "U,'',${e}" | tee -a "${csv}" #this wont happen
   fi
 
 done < "${completeList}"

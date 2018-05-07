@@ -26,6 +26,7 @@ outWriter = csv.writer(outFile)
 outMissingWriter = csv.writer(outMissingFile)
 
 checkHash = True
+includeNameMatches = False
 
 # Columns as defined in the srcFile and searchFile CSVs.
 typeCol = 0
@@ -69,7 +70,7 @@ for srcRow in srcList:
 	results = []
 	for masterRow in masterList:
 		res = "MISSING"
-		if checkHash and srcRow[typeCol] == "FILE" and srcRow[hashCol] and srcRow[hashCol] == masterRow[hashCol]:
+		if checkHash and srcRow[typeCol] == "F" and srcRow[hashCol] and srcRow[hashCol] == masterRow[hashCol]:
 			res = "HASH_MATCH"
 			cnt_identical += 1
 			cnt_match += 1
@@ -95,10 +96,9 @@ for srcRow in srcList:
 					res = "RENAMED"
 
 		if res != "MISSING":
-			resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], masterRow[pathCol] ]
-			#resRow = getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol], masterRow[pathCol] )
-			#print(resRow)
-			results.append(resData)
+			if not includeNameMatches or (includeNameMatches and res == "NAME_MATCH"):
+				resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], masterRow[pathCol] ]
+				results.append(resData)
 
 	tot_row += 1
 	tot_match += cnt_match
