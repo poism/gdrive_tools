@@ -1,3 +1,14 @@
+#!/usr/bin/python
+""" poism_folderBasedRename.py
+	Required args: /path/to/startFolder/
+	All files below the startFolder will be renamed based on their parents
+	and with the first characters from the md5 hash of the file itself.
+	eg. startFolder/Some Folder/file.jpeg
+	--> startFolder/Some Folder/startFolder_SomeFolder.2254d5.jpg
+	Junk files and empty null files will be deleted.
+	A timestamped csv log will be saved in the startingDirectory.
+	Written by Sherab Sangpo Dorje ( po@poism.com )
+"""
 import os, sys, re, hashlib, csv, string, datetime
 
 theDate = datetime.datetime.now().strftime("%Y%m%d_%H%M%S");
