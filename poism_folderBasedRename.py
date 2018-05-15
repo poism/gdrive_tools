@@ -139,15 +139,23 @@ def applyActions(actions, absPath, relPath):
 				logAction(type, relPath, v['fn'], v['value'])
 
 
-def confirm(question):
+def confirm(question, continueOnEmpty=False):
+	if continueOnEmpty:
+		question = question + " (ENTER key) "
+	else:
+		question = question + " y/n:"
 	while True:
 		choice = raw_input(question).lower()
 		if choice in ['yes', 'y']:
 			return True
 		elif choice in ['no', 'n']:
 			return False
+		elif not continueOnEmpty:
+			print "WARNING: You did not answer 'yes' or 'no'! We are assuming YES, are you sure?"
+			question = "Press ENTER again to confirm YES or type 'no'.\n"
+			continueOnEmpty = True
 		else:
-			print "Please answer 'yes' or 'no'\n"
+			return True
 
 def formatTitle(title, length=0):
 	if length == 0:
@@ -166,6 +174,7 @@ def walkDirs(path, level=None):
 	clearTerminal();
 	titleLength = formatTitle("Exploring " + path)
 	pendingActions = False
+	seriousActions = False
 	actions = { 'rename': [], 'delete': [], 'error': [], 'skip': [] }
 	fileList = [];
 	dirList = [];
@@ -185,27 +194,32 @@ def walkDirs(path, level=None):
 	for type in ['rename', 'delete', 'error', 'skip']:
 		if len(actions[type]):
 			pendingActions = True
+			if type == 'rename' or  type == 'delete':
+				seriousActions = True
+
 			formatTitle(type.upper(), titleLength)
 		for v in actions[type]:
 			sep = ' ---> ' if type == 'rename' else ' , because '
 			print( type + ': ' + v['fn'] + sep + v['value'] )
 
-	if pendingActions:
+	if seriousActions:
 		formatTitle('CONFIRM', titleLength)
-		if confirm("Do you want to apply these actions? y/n: "):
+		if confirm("Do you want to apply these actions?"):
 			formatTitle('LOG', titleLength)
 			applyActions(actions, path, relPath)
 		else:
 			print("Skipping all actions in: " + path)
-	else:
+	elif not pendingActions:
 		print("Nothing to do...")
 
-	for dirName in dirList:
-		walkDirs(path + '/' + dirName)
+	print("")
+	if confirm('Press CTRL+c to Quit or continue to next folder.', True):
+		for dirName in dirList:
+			walkDirs(path + '/' + dirName)
 
 
 def main():
-	global startPath, rootDirName, outFileName, outFile
+	global startPath, rootDirName, outFileName, outFileOpen, outFile
 	try:
 		startPath = sys.argv[1]
 	except:
@@ -217,8 +231,13 @@ def main():
 	outFileName = startPath + '/' + outFileName
 
 	walkDirs(startPath, 0)
-	outFile.close()
-	formatTitle("Log File: "+outFileName)
+
+	if outFileOpen:
+		outFile.close()
+		formatTitle("Log File: "+outFileName)
+	else:
+		formatTitle("Log File: Not created, no actions applied.")
+
 
 if __name__ == "__main__":
 	main()
