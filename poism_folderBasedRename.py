@@ -41,7 +41,12 @@ def md5(fileName):
 
 
 def sanitize(str):
-	return re.sub(r'[^a-zA-Z0-9_\-]+', '', str)
+	#note we are not replacing "/" here...
+	str = re.sub('(?!^)([A-Z][a-z]+)', r' \1', str) #make "/CrazyFolder/! bad SUBFOLDER-0/file" into "/ Crazy Folder/! bad SUBFOLDER-0/file"
+	str = re.sub(r'[^a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER 0/file"
+	str = str.title() #result: "/ Crazy Folder/  Bad Subfolder 0/File"
+	str = re.sub(r"\s+", '', str) #remove all spaces, result: "/CrazyFolder/BadSubfolder0/File"
+	return str #re.sub(r'[^a-zA-Z0-9_\-]+', '', str)
 
 
 def processExtension(ext):
@@ -82,7 +87,8 @@ def checkIfUnwanted(criteria,value):
 
 
 def getNewName(hash, name, ext, relPath):
-	newName = sanitize( relPath.replace('/', '_') ) + "." + hash[0:6] + ext # trim hash to first 7 chars
+	newName = sanitize( relPath )
+	newName = newName.replace('/', '_') + "." + hash[0:6] + ext # trim hash to first 6 chars
 	return newName
 
 
