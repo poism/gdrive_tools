@@ -96,19 +96,19 @@ def processFile(path, fileName, relPath):
 	#print("Processing "+f)
 	name, ext = os.path.splitext(fileName)
 	newExt = processExtension(ext)
-	unwantedFile = False
-	unwantedFile = unwantedFile if unwantedFile else checkIfUnwanted('extension', ext)
+	hash = ""
+	unwantedFile = checkIfUnwanted('extension', ext)
 	unwantedFile = unwantedFile if unwantedFile else checkIfUnwanted('startswith', fileName)
 
 	if unwantedFile:
 		action = "delete"
 		value = unwantedFile
-		return action, value
+		return action, value, hash
 
 	if not newExt:
 		action = "skip"
 		value = "Ignored filetype: " + ext
-		return action, value
+		return action, value, hash
 
 	filePath = path + "/" + fileName
 
@@ -118,7 +118,7 @@ def processFile(path, fileName, relPath):
 	if unwantedFile:
 		action = "delete"
 		value = unwantedFile
-		return action, value
+		return action, value, hash
 
 	newName = getNewName(hash, name, newExt, relPath)
 	newFilePath = path + "/" + newName
@@ -130,30 +130,31 @@ def processFile(path, fileName, relPath):
 		action = "error"
 		value = "New name " + newName + " already exists!"
 
-	return action, value
+	return action, value, hash
 
 
-def logAction(action, relPath, fileName, newName=''):
+def logAction(action, relPath, hash, fileName, newName=''):
 	global outFileOpen, outFileName, outFile, outWriter
 	if not outFileOpen:
 		outFile = open(outFileName, 'a')
 		outWriter = csv.writer(outFile)
 		outFileOpen = True
-		outWriter.writerow( list( [ "Action", "Folder", "FileName", "NewName" ] ) )
+		outWriter.writerow( list( [ "Action", "Folder", "FileName", "NewName", "MD5 Hash" ] ) )
 
-	row = list( [ action, relPath, fileName, newName ] )
+	row = list( [ action, relPath, fileName, newName, hash ] )
 	print(row)
 	outWriter.writerow( row )
+
 
 def applyActions(actions, absPath, relPath):
 	for type in ['delete', 'rename', 'error', 'skip']:
 		for v in actions[type]:
 			if type == 'delete':
 				os.remove(absPath + '/' + v['fn'])
-				logAction(type, relPath, v['fn'], '')
+				logAction(type, relPath, v['hash'], v['fn'], '')
 			elif type == 'rename':
 				os.rename(absPath + '/' + v['fn'], absPath + '/' + v['value'])
-				logAction(type, relPath, v['fn'], v['value'])
+				logAction(type, relPath, v['hash'], v['fn'], v['value'])
 
 
 def confirm(question, continueOnEmpty=False):
@@ -205,8 +206,8 @@ def walkDirs(path, level=None):
 			dirList.append(itemName)
 
 	for fileName in fileList:
-		action, value = processFile(path, fileName, relPath)
-		actions[action].append({ 'fn': fileName , 'value': value })
+		action, value, hash = processFile(path, fileName, relPath)
+		actions[action].append({ 'hash': hash, 'fn': fileName , 'value': value })
 
 	for type in ['rename', 'delete', 'error', 'skip']:
 		if len(actions[type]):
