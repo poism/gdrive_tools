@@ -3,6 +3,10 @@ import os, sys, re, hashlib, csv, string, datetime
 theDate = datetime.datetime.now().strftime("%Y%m%d_%H%M%S");
 startPath = "" #global passed in as arg
 rootDirName = "" #global set based on startPath
+outFileName = "renamed-"+theDate+".csv"
+outFile = None
+outWriter = None
+outFileOpen = False
 
 # Only the following file extensions will be processed
 fileTypesToProcess = {
@@ -16,14 +20,18 @@ unwantedFiles = {
 	'md5': [ 'd41d8cd98f00b204e9800998ecf8427e' ] #null file
 }
 
+def clearTerminal():
+	os.system('cls' if os.name == 'nt' else 'clear')
 
 def md5(fileName):
 	with open(fileName) as targetFile:
 		md5res = hashlib.md5(targetFile.read()).hexdigest()
 	return md5res
 
+
 def sanitize(str):
 	return re.sub(r'[^a-zA-Z0-9_\-]+', '', str)
+
 
 def processExtension(ext):
 	ext = ext.lower()[1:]
@@ -44,6 +52,7 @@ def processExtension(ext):
 
 	return False
 
+
 def checkIfUnwanted(criteria,value):
 	if criteria == 'extension':
 		for v in unwantedFiles[criteria]:
@@ -60,9 +69,11 @@ def checkIfUnwanted(criteria,value):
 	else:
 		return False
 
+
 def getNewName(hash, name, ext, relPath):
 	newName = sanitize( relPath.replace('/', '_') ) + "." + hash[0:6] + ext # trim hash to first 7 chars
 	return newName
+
 
 def processFile(path, fileName, relPath):
 	#print("Processing "+f)
@@ -104,13 +115,29 @@ def processFile(path, fileName, relPath):
 
 	return action, value
 
-def applyActions(actions, path):
+
+def logAction(action, relPath, fileName, newName=''):
+	global outFileOpen, outFileName, outFile, outWriter
+	if not outFileOpen:
+		outFile = open(outFileName, 'a')
+		outWriter = csv.writer(outFile)
+		outFileOpen = True
+		outWriter.writerow( list( [ "Action", "Folder", "FileName", "NewName" ] ) )
+
+	row = list( [ action, relPath, fileName, newName ] )
+	print(row)
+	outWriter.writerow( row )
+
+def applyActions(actions, absPath, relPath):
 	for type in ['delete', 'rename', 'error', 'skip']:
 		for v in actions[type]:
 			if type == 'delete':
-				os.remove(path + '/' + v['fn'])
+				os.remove(absPath + '/' + v['fn'])
+				logAction(type, relPath, v['fn'], '')
 			elif type == 'rename':
-				os.rename(path + '/' + v['fn'], path + '/' + v['value'])
+				os.rename(absPath + '/' + v['fn'], absPath + '/' + v['value'])
+				logAction(type, relPath, v['fn'], v['value'])
+
 
 def confirm(question):
 	while True:
@@ -134,7 +161,9 @@ def formatTitle(title, length=0):
 		txt = txt if length - len(txt) == 0 else txt + "-"
 		print("\n" + txt)
 
-def walkDirs(path):
+
+def walkDirs(path, level=None):
+	clearTerminal();
 	titleLength = formatTitle("Exploring " + path)
 	pendingActions = False
 	actions = { 'rename': [], 'delete': [], 'error': [], 'skip': [] }
@@ -164,7 +193,8 @@ def walkDirs(path):
 	if pendingActions:
 		formatTitle('CONFIRM', titleLength)
 		if confirm("Do you want to apply these actions? y/n: "):
-			applyActions(actions, path)
+			formatTitle('LOG', titleLength)
+			applyActions(actions, path, relPath)
 		else:
 			print("Skipping all actions in: " + path)
 	else:
@@ -175,7 +205,7 @@ def walkDirs(path):
 
 
 def main():
-	global startPath, rootDirName
+	global startPath, rootDirName, outFileName, outFile
 	try:
 		startPath = sys.argv[1]
 	except:
@@ -184,8 +214,11 @@ def main():
 
 	startPath = os.path.abspath(startPath)
 	rootDirName = os.path.basename(startPath)
+	outFileName = startPath + '/' + outFileName
 
-	walkDirs(startPath)
+	walkDirs(startPath, 0)
+	outFile.close()
+	formatTitle("Log File: "+outFileName)
 
 if __name__ == "__main__":
 	main()
