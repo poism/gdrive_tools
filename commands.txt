@@ -4,5 +4,20 @@ comm -23 PoismImages_20171111_171747.completelist.csv.sorted PoismImagesNAS_2017
 
 cat PoismImages_20171111-ONLY-NOT-NAS.txt | grep -v Icon>PoismImages_20171111-ONLY-NOT-NAS.txt
 comm -23 PoismImages_20171111_171747.completelist.txt.sorted PoismImagesNAS_20171114_000017.completelist.txt.sorted | grep -v Icon > Compared_GD20171111-vs-NASDL20171114.txt
-diff PoismImages_20171111_171747.completelist.txt.sorted PoismImagesNAS_20171114_000017.completelist.txt.sorted | grep -v Icon | grep '<' > Diffed_GD20171111-vs-NASDL2017114-GDONLY.txt 
-diff PoismImages_20171111_171747.completelist.txt.sorted PoismImagesNAS_20171114_000017.completelist.txt.sorted | grep -v Icon | grep '>' > Diffed_GD20171111-vs-NASDL2017114-NASONLY.txt 
+diff PoismImages_20171111_171747.completelist.txt.sorted PoismImagesNAS_20171114_000017.completelist.txt.sorted | grep -v Icon | grep '<' > Diffed_GD20171111-vs-NASDL2017114-GDONLY.txt
+diff PoismImages_20171111_171747.completelist.txt.sorted PoismImagesNAS_20171114_000017.completelist.txt.sorted | grep -v Icon | grep '>' > Diffed_GD20171111-vs-NASDL2017114-NASONLY.txt
+
+
+
+
+# Find folders ending with spaces, badddd...
+find . -type d -regex "^.+\s$"
+
+#Find all trailing space filenames and remove trailing space. (may have to run repeatedly till all are taken care of)
+find . -regex "^.+\s$" -printf '%p\0' | while IFS= read -r -d '' FN; do FNnew=echo "${FN%${FN##*[^ ]}}"; echo "[$FN] [$FNnew]"; mv "$FN" "$FNnew"; done
+
+# Remove from bad folders from Synology Diskstation resulting from the trailing space folders...
+find . -type d -name "*WhiteSpaceConflict" -exec rm -rv "{}" \;
+
+#Basic, No perms
+rsync -rtv source/ dest/
