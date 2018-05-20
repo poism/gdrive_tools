@@ -16,8 +16,11 @@ function explodingCats() {
 }
 
 explodingCats IDENTICAL
-explodingCats RENAMED 
+explodingCats RENAMED
 explodingCats MOVED
 explodingCats CHANGED
 explodingCats PATH_MATCH
+explodingCats RECOVERABLE
+explodingCats RECOVER_MAYBE
+#explodingCats NULL
 #explodingCats MISSING
