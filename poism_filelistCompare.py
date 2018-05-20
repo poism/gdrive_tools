@@ -1,4 +1,4 @@
-import csv, string, datetime
+import sys, csv, string, datetime
 # Expects 2 args, source.completelist.csv and search-in.completelist.csv
 # This script is intended to compare two csv outputs from poism_getFolderFileList.sh
 # This will output a final csv that compares the srcFile to the searchFile.
@@ -18,7 +18,7 @@ except:
 	print "Requires two arguments be provided (two output files from poism_getFolderFileList.sh)!"
 	print "eg. './path/to/source.completelist.csv' './path/to/search-in.completelist.csv'"
 	print "Note, this performs a one-directional comparison, the source should be the LONGER file list."
-	print "Files that exist in search-in but not in source are ignored.
+	print "Files that exist in search-in but not in source are ignored."
 	print "Hint: pointing to the same completelist.csv for both source and search, will identify duplicates ('MOVED') items."
 	sys.exit(1)
 
@@ -34,7 +34,7 @@ outFile = file(outFileName, 'w')
 outMissingFileName = "comparison-"+theDate+".missing.csv"
 outMissingFile = file(outMissingFileName, 'w')
 
-outErrorFileName = "comparison-"+theDate+".errors.csv"
+outErrorFileName = "comparison-"+theDate+".error.csv"
 outErrorFile = file(outErrorFileName, 'w')
 
 srcList = csv.reader(srcFile) #this is the longer list, it is read on the fly
@@ -87,7 +87,7 @@ headerRow = getOutputRow(0)
 print(headerRow)
 outWriter.writerow( headerRow ) #populate header
 outMissingWriter.writerow( headerRow ) #populate header
-outErrorFile.writerow( headerRow ) #populate header
+outErrorWriter.writerow( headerRow ) #populate header
 
 for srcRow in srcList:
 	fileName,path = getFilenamePath(srcRow[pathCol])
@@ -98,7 +98,6 @@ for srcRow in srcList:
 	cnt_recoverable=0
 	cnt_recover_maybe=0
 	results = []
-
 
 	for masterRow in masterList:
 
@@ -126,7 +125,7 @@ for srcRow in srcList:
 			else:
 				cnt_match += 1
 				res = "PATH_MATCH"
-		elif res != "NULL" or ( srcNull and not masterNull and cnt_recoverable == 0):
+		elif (res != "NULL") or (srcNull and not masterNull and cnt_recoverable == 0):
 			oFileName,oPath = getFilenamePath(masterRow[pathCol])
 
 			if fileName == oFileName and srcRow[typeCol] == masterRow[typeCol]:
@@ -141,13 +140,15 @@ for srcRow in srcList:
 
 			elif res == "HASH_MATCH":
 					res = "RENAMED"
+		else:
+			res = "SKIP"
 
-		doAppend = False if res == "MISSING" or res == "NULL" else True
-		doAppend = True if (includeNameMatches) or (not includeNameMatches and res != "NAME_MATCH") else doAppend
 
-		if doAppend:
-			resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], masterRow[pathCol] ]
-			results.append(resData)
+		if res != "MISSING" and res != "SKIP" and res != "NULL":
+			if (includeNameMatches) or (not includeNameMatches and res != "NAME_MATCH"):
+				resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], masterRow[pathCol] ]
+				results.append(resData)
+
 
 	masterListCheckedOnce = True
 	tot_row += 1
@@ -157,6 +158,11 @@ for srcRow in srcList:
 	tot_recoverable += cnt_recoverable
 	tot_recover_maybe += cnt_recover_maybe
 
+	for r in results:
+		row = getOutputRow(r[0], r[1], cnt_match, cnt_identical, r[2], r[3], r[4])
+		print(row)
+		outWriter.writerow( row )
+
 	if res == "NULL":
 		row = getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol] )
 		print(row)
@@ -165,11 +171,6 @@ for srcRow in srcList:
 		row = getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol] )
 		print(row)
 		outMissingWriter.writerow( row )
-	else:
-		for r in results:
-			row = getOutputRow(r[0], r[1], cnt_match, cnt_identical, r[2], r[3], r[4])
-			print(row)
-			outWriter.writerow( row )
 
 
 finalMsg = "TOTALS: Identical = "+str(tot_identical)+" Matches = "+str(tot_match)+" Missing = "+str(tot_row - tot_match)+" Null = "+str(tot_null)+" Recoverable = "+str(tot_recoverable)+" Recoverable Maybe = "+str(tot_recover_maybe)
