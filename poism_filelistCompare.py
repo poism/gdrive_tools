@@ -146,7 +146,7 @@ for srcRow in srcList:
 
 		if res != "MISSING" and res != "SKIP" and res != "NULL":
 			if (includeNameMatches) or (not includeNameMatches and res != "NAME_MATCH"):
-				resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], masterRow[pathCol] ]
+				resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], (masterRow[pathCol] if  res != "IDENTICAL" else "") ]
 				results.append(resData)
 
 
