@@ -20,6 +20,7 @@ explodingCats RENAMED
 explodingCats MOVED
 explodingCats CHANGED
 explodingCats PATH_MATCH
+explodingCats NAME_MATCH
 explodingCats RECOVERABLE
 explodingCats RECOVER_MAYBE
 #explodingCats NULL

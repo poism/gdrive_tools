@@ -9,7 +9,9 @@ import sys, csv, string, datetime
 # Can for static backups, can also be checked against old completelist.csv to detect bitrot.
 # Po@poism.com
 
-theDate = datetime.datetime.now().strftime("%Y%m%d_%H%M%S");
+# CONFIGURABLES:
+checkHash = True
+includeNameMatches = True  # NOTE This will include "NAME_MATCH" Type, which shows files with matching names, regardless of directory (only if other more specific matches fail).
 
 try:
 	srcFileName = sys.argv[1]
@@ -28,23 +30,18 @@ srcFile = file(srcFileName, 'r')
 # This is the shorter file list that we are searching for matches in...
 searchFile = file(searchFileName, 'r')
 
+theDate = datetime.datetime.now().strftime("%Y%m%d_%H%M%S");
+
 outFileName = "comparison-"+theDate+".csv"
-outFile = file(outFileName, 'w')
-
 outMissingFileName = "comparison-"+theDate+".missing.csv"
-outMissingFile = file(outMissingFileName, 'w')
-
 outErrorFileName = "comparison-"+theDate+".error.csv"
-outErrorFile = file(outErrorFileName, 'w')
+
+outFile = False
+outMissingFile = False
+outErrorFile = False
 
 srcList = csv.reader(srcFile) #this is the longer list, it is read on the fly
 masterList = list(csv.reader(searchFile)) #load into ram
-outWriter = csv.writer(outFile)
-outMissingWriter = csv.writer(outMissingFile)
-outErrorWriter = csv.writer(outErrorFile)
-
-checkHash = True
-includeNameMatches = False
 
 # Columns as defined in the srcFile and searchFile CSVs.
 typeCol = 0
@@ -82,12 +79,11 @@ tot_null = 0
 tot_recoverable = 0
 tot_recover_maybe = 0
 masterListCheckedOnce = False
-
+out_header = False
+outError_header = False
+outMissing_header = False
 headerRow = getOutputRow(0)
 print(headerRow)
-outWriter.writerow( headerRow ) #populate header
-outMissingWriter.writerow( headerRow ) #populate header
-outErrorWriter.writerow( headerRow ) #populate header
 
 for srcRow in srcList:
 	fileName,path = getFilenamePath(srcRow[pathCol])
@@ -128,7 +124,7 @@ for srcRow in srcList:
 		elif (res != "NULL") or (srcNull and not masterNull and cnt_recoverable == 0):
 			oFileName,oPath = getFilenamePath(masterRow[pathCol])
 
-			if fileName == oFileName and srcRow[typeCol] == masterRow[typeCol]:
+			if fileName == oFileName and srcRow[typeCol] != "D" and masterRow[typeCol] != "D": #srcRow[typeCol] == masterRow[typeCol]:
 				#name match
 				if res == "HASH_MATCH":
 					res = "MOVED"
@@ -146,7 +142,7 @@ for srcRow in srcList:
 
 		if res != "MISSING" and res != "SKIP" and res != "NULL":
 			if (includeNameMatches) or (not includeNameMatches and res != "NAME_MATCH"):
-				resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], (masterRow[pathCol] if  res != "IDENTICAL" and res != "PATH_MATCH" and res != "NAME_MATCH" else "") ]
+				resData = [ tot_row, res, srcRow[typeCol], srcRow[pathCol], (masterRow[pathCol] if  res != "IDENTICAL" and res != "PATH_MATCH" else "") ]
 				results.append(resData)
 
 
@@ -159,15 +155,27 @@ for srcRow in srcList:
 	tot_recover_maybe += cnt_recover_maybe
 
 	for r in results:
+		if not outFile:
+			outFile = file(outFileName, 'w')
+			outWriter = csv.writer(outFile)
+			outWriter.writerow( headerRow ) #populate header
 		row = getOutputRow(r[0], r[1], cnt_match, cnt_identical, r[2], r[3], r[4])
 		print(row)
 		outWriter.writerow( row )
 
 	if res == "NULL":
+		if not outErrorFile:
+			outErrorFile = file(outErrorFileName, 'w')
+			outErrorWriter = csv.writer(outErrorFile)
+			outErrorWriter.writerow( headerRow ) #populate header
 		row = getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol] )
 		print(row)
-		outErrorFile.writerow ( row )
+		outErrorWriter.writerow ( row )
 	elif cnt_match == 0:
+		if not outMissingFile:
+			outMissingFile = file(outMissingFileName, 'w')
+			outMissingWriter = csv.writer(outMissingFile)
+			outMissingWriter.writerow( headerRow ) #populate header
 		row = getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol] )
 		print(row)
 		outMissingWriter.writerow( row )
@@ -179,6 +187,10 @@ outWriter.writerow( getOutputRow("summary", finalMsg ) )
 
 srcFile.close()
 searchFile.close()
-outFile.close()
-outMissingFile.close()
-outErrorFile.close()
+
+if outFile:
+	outFile.close()
+if outMissingFile:
+	outMissingFile.close()
+if outErrorFile:
+	outErrorFile.close()
