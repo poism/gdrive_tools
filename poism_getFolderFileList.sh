@@ -43,6 +43,11 @@ echo "completeList = ${completeList}"
 
 cd "$inputDir"
 
+has_md5sum=0 # if this is a mac without md5sum, we can use md5 -r ....
+if [ -x "$(command -v md5sum)" ]; then
+	has_md5sum=1
+fi
+
 find . > "${fileList}" 2> "${errorList}"
 
 if [[ -f "${errorList}" ]]; then
@@ -72,7 +77,12 @@ do
 		continue
 	fi
   if [[ -f "${e}" ]]; then
-  	checksum=($(md5sum "${e}"))
+	if [ "${has_md5sum}" == "1" ]; then
+  		checksum=($(md5sum "${e}"))
+	else
+		# this is probably a mac so hopefully this will work:
+  		checksum=($(md5 -r "${e}"))
+	fi
     echo "F,${checksum},${e}" | tee -a "${csv}"
 	elif [[ -d "${e}" ]]; then
     echo "D,'',${e}" | tee -a "${csv}"
