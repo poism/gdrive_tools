@@ -13,6 +13,9 @@ filename="${comparison%.*}"
 function explodingCats() {
 	echo "Exploding ${comparison} for ${1}"
 	cat "${comparison}" | grep "${1}," > "${filename}.${1}.${extension}"
+	if [ ! -s "${filename}.${1}.${extension}" ] ; then
+		rm "${filename}.${1}.${extension}"
+	fi
 }
 
 explodingCats IDENTICAL
