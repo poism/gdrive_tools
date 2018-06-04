@@ -98,12 +98,13 @@ for srcRow in srcList:
 	for masterRow in masterList:
 
 		masterNull = isNull(masterRow[hashCol])
+		hasHash = True if checkHash and ( len(srcRow[hashCol]) > 5  or  len(masterRow[hashCol]) > 5 ) else False
 
 		res = "MISSING"
 		if srcNull and masterNull:
 			res = "NULL"
 			cnt_null = cnt_null if masterListCheckedOnce else cnt_null + 1
-		elif checkHash and srcRow[typeCol] == "F" and srcRow[hashCol] and srcRow[hashCol] == masterRow[hashCol]:
+		elif hasHash and srcRow[hashCol] == masterRow[hashCol]:
 			res = "HASH_MATCH"
 			cnt_identical += 1
 			cnt_match += 1
@@ -115,13 +116,14 @@ for srcRow in srcList:
 			elif srcNull != masterNull:
 				cnt_recoverable += 1
 				res = "RECOVERABLE"
-			elif srcRow[typeCol] == "F":
+			elif hasHash:
 				cnt_match += 1
-				res = "CHANGED" if checkHash else "PATH_MATCH"
+				res = "CHANGED"
 			else:
 				cnt_match += 1
 				res = "PATH_MATCH"
-		elif (res != "NULL") or (srcNull and not masterNull and cnt_recoverable == 0):
+
+		elif (res != "NULL") or (srcNull != masterNull and cnt_recoverable == 0):
 			oFileName,oPath = getFilenamePath(masterRow[pathCol])
 
 			if fileName == oFileName and srcRow[typeCol] != "D" and masterRow[typeCol] != "D": #srcRow[typeCol] == masterRow[typeCol]:
@@ -135,7 +137,8 @@ for srcRow in srcList:
 					res = "NAME_MATCH"
 
 			elif res == "HASH_MATCH":
-					res = "RENAMED"
+				res = "RENAMED"
+
 		else:
 			res = "SKIP"
 
@@ -147,7 +150,6 @@ for srcRow in srcList:
 
 
 	masterListCheckedOnce = True
-	tot_row += 1
 	tot_match += cnt_match
 	tot_identical += cnt_identical
 	tot_null += cnt_null
@@ -176,19 +178,26 @@ for srcRow in srcList:
 			outMissingFile = file(outMissingFileName, 'w')
 			outMissingWriter = csv.writer(outMissingFile)
 			outMissingWriter.writerow( headerRow ) #populate header
+		if cnt_recoverable > 0:
+			res = "RECOVERABLE"
+		elif cnt_recover_maybe > 0:
+			res = "RECOVER_MAYBE"
 		row = getOutputRow(tot_row, res, cnt_match, cnt_identical, srcRow[typeCol], srcRow[pathCol] )
 		print(row)
 		outMissingWriter.writerow( row )
 
+	tot_row += 1
 
-finalMsg = "TOTALS: Identical = "+str(tot_identical)+" Matches = "+str(tot_match)+" Missing = "+str(tot_row - tot_match)+" Null = "+str(tot_null)+" Recoverable = "+str(tot_recoverable)+" Recoverable Maybe = "+str(tot_recover_maybe)
+
+
+finalMsg = "TOTALS: Identical = "+str(tot_identical)+" Matches = "+str(tot_match)+" Missing = "+str(tot_row - 1 - tot_match)+" Null = "+str(tot_null)+" Recoverable = "+str(tot_recoverable)+" Recoverable Maybe = "+str(tot_recover_maybe)
 print(finalMsg)
-outWriter.writerow( getOutputRow("summary", finalMsg ) )
 
 srcFile.close()
 searchFile.close()
 
 if outFile:
+	outWriter.writerow( getOutputRow("summary", finalMsg ) )
 	outFile.close()
 if outMissingFile:
 	outMissingFile.close()
