@@ -44,7 +44,13 @@ def sanitize(str):
 	#note we are not replacing "/" here...
 	str = re.sub('(?!^)([A-Z][a-z]+)', r' \1', str) #make "/CrazyFolder/! bad SUBFOLDER-0/file" into "/ Crazy Folder/! bad SUBFOLDER-0/file"
 	str = re.sub(r'[^a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER 0/file"
-	str = str.title() #result: "/ Crazy Folder/  Bad Subfolder 0/File"
+	parts = str.split(os.path.sep)
+	for (p,part) in enumerate(parts):
+		# process individual folder names, if folder is all CAPS we will retain that, otherwise will Capitalize
+		if not part.isupper(): 
+			parts[p] = part.title() #result: "/ Crazy Folder/  Bad Subfolder 0/File"
+			
+	str = os.path.join('',*parts) #put it back together
 	str = re.sub(r"\s+", '', str) #remove all spaces, result: "/CrazyFolder/BadSubfolder0/File"
 	return str #re.sub(r'[^a-zA-Z0-9_\-]+', '', str)
 
