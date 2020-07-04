@@ -1,6 +1,9 @@
 #!/usr/bin/python
 """ poism_folderBasedRename.py
 	Required args: /path/to/startFolder/
+        Optional args: --keep-sequence = Keeping sequences in filenames eg. DCIM_001 keeps 001
+        Optional args: --skip-hash = Skip md5 hashing
+        Optional args: --use-mod-time = Use modified timestamp for naming
 	All files below the startFolder will be renamed based on their parents
 	and with the first characters from the md5 hash of the file itself.
 	eg. startFolder/Some Folder/file.jpeg
@@ -9,15 +12,21 @@
 	A timestamped csv log will be saved in the startingDirectory.
 	Written by Sherab Sangpo Dorje ( po@poism.com )
 """
-import os, sys, re, hashlib, csv, string, datetime
+import os, sys, re, hashlib, csv, string, datetime, time
 
 theDate = datetime.datetime.now().strftime("%Y%m%d_%H%M%S");
+startPaths = []
 startPath = "" #global passed in as arg
 rootDirName = "" #global set based on startPath
 outFileName = "renamed-"+theDate+".csv"
 outFile = None
 outWriter = None
 outFileOpen = False
+keepSequence = False
+keepFolderName = False
+skipHash = False
+useModTime = False
+
 
 # Only the following file extensions will be processed
 fileTypesToProcess = {
@@ -39,18 +48,25 @@ def md5(fileName):
 		md5res = hashlib.md5(targetFile.read()).hexdigest()
 	return md5res
 
+def upper_replace(match):
+    return "-"+match.group(1).upper()+"-"
 
 def sanitize(str):
-	#note we are not replacing "/" here...
-	str = re.sub('(?!^)([A-Z][a-z]+)', r' \1', str) #make "/CrazyFolder/! bad SUBFOLDER-0/file" into "/ Crazy Folder/! bad SUBFOLDER-0/file"
-	str = re.sub(r'[^a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER 0/file"
-	parts = str.split(os.path.sep)
-	for (p,part) in enumerate(parts):
-		# process individual folder names, if folder is all CAPS we will retain that, otherwise will Capitalize
-		if not part.isupper(): 
-			parts[p] = part.title() #result: "/ Crazy Folder/  Bad Subfolder 0/File"
-			
-	str = os.path.join('',*parts) #put it back together
+        global keepFolderName
+        if not keepFolderName:
+	    #note we are not replacing "/" here...
+	    str = re.sub('(?!^)([A-Z][a-z]+)', r' \1', str) #make "/CrazyFolder/! bad SUBFOLDER-0/file" into "/ Crazy Folder/! bad SUBFOLDER-0/file"
+	    str = re.sub(r'[^a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER 0/file"
+	    parts = str.split(os.path.sep)
+	    for (p,part) in enumerate(parts):
+	    	# process individual folder names, if folder is all CAPS we will retain that, otherwise will Capitalize
+	    	if not part.isupper(): 
+                    allcaps = re.findall(r'[-_. ]([A-Z][A-Z]?[A-Z])[-_. ]', part) # except we will also retain 2-3 character all caps codes, eg. NYC NY NM etc. FIXME: bug occurs if you have adjacent sets of matches, eg. -NM-NYC-AZ- would result in -NM-Nyc-AZ- 
+	    	    parts[p] = part.title() #result: "/ Crazy Folder/  Bad Subfolder 0/File"
+                    for caps in allcaps:
+                        parts[p] = re.sub(r'[-_. ]('+caps.title()+')[-_. ]', upper_replace, parts[p], 1)
+	    		
+	    str = os.path.join('',*parts) #put it back together
 	str = re.sub(r"\s+", '', str) #remove all spaces, result: "/CrazyFolder/BadSubfolder0/File"
 	return str #re.sub(r'[^a-zA-Z0-9_\-]+', '', str)
 
@@ -92,14 +108,34 @@ def checkIfUnwanted(criteria,value):
 		return False
 
 
-def getNewName(hash, name, ext, relPath):
+def getNewName(hash, name, ext, relPath,modTime):
 	newName = sanitize( relPath )
-	newName = newName.replace('/', '_') + "." + hash[0:6] + ext # trim hash to first 6 chars
+        global keepSequence,skipHash
+        if keepSequence:
+            foundSequence = re.match(r'.*?([0-9]+)$', name)
+            if foundSequence:
+                foundSequence=foundSequence.group(1)
+                newName = newName +"-"+ foundSequence
+
+	newName = newName.replace('/', '_')
+        if skipHash:
+            newName = newName + ext
+        else:
+            newName = newName + "." + hash[0:6] + ext # trim hash to first 6 chars
+
+        if modTime:
+            modTime = datetime.datetime.fromtimestamp(modTime)
+            timeStr = modTime.strftime('%Y%m%d%H%M%S')
+            print "FIXME: applying modified time to filenames not yet implemented"
+            print timeStr
+
+        print "Processing: "+name +" --> "+newName
 	return newName
 
 
 def processFile(path, fileName, relPath):
 	#print("Processing "+f)
+        global skipHash, useModTime
 	name, ext = os.path.splitext(fileName)
 	newExt = processExtension(ext)
 	hash = ""
@@ -118,7 +154,9 @@ def processFile(path, fileName, relPath):
 
 	filePath = path + "/" + fileName
 
-	hash = md5( filePath )
+        if not skipHash:
+	    hash = md5( filePath )
+
 	unwantedFile = True if unwantedFile else checkIfUnwanted('md5', hash)
 
 	if unwantedFile:
@@ -126,7 +164,13 @@ def processFile(path, fileName, relPath):
 		value = unwantedFile
 		return action, value, hash
 
-	newName = getNewName(hash, name, newExt, relPath)
+
+        if useModTime:
+            modTime = os.path.getmtime(filePath)
+        else:
+            modTime = False
+
+	newName = getNewName(hash, name, newExt, relPath, modTime)
 	newFilePath = path + "/" + newName
 
 	if not os.path.exists(newFilePath):
@@ -243,24 +287,70 @@ def walkDirs(path, level=None):
 
 
 def main():
-	global startPath, rootDirName, outFileName, outFileOpen, outFile
+	global startPaths, startPath, rootDirName, outFileName, outFileOpen, outFile, keepSequence, keepFolderName, skipHash, useModTime
+        argList = sys.argv[1:]
 	try:
-		startPath = sys.argv[1]
+
+            for curArg in argList:
+                if curArg in ("--help", "-h"):
+	            print ('''
+        Required args: /path/to/startFolder/
+        Optional args: --keep-sequence = Keeping sequences in filenames eg. DCIM_001 keeps 001
+        Optional args: --skip-hash = Skip md5 hashing
+        Optional args: --use-mod-time = Use modified timestamp for naming
+	All files below the startFolder will be renamed based on their parents
+	and with the first characters from the md5 hash of the file itself.
+	eg. startFolder/Some Folder/file.jpeg
+	--> startFolder/Some Folder/startFolder_SomeFolder.2254d5.jpg
+	Junk files and empty null files will be deleted.
+	A timestamped csv log will be saved in the startingDirectory.
+        ''')
+		    sys.exit(0)
+                elif curArg in ("--keep-sequence"):
+                    keepSequence = True
+                elif curArg in ("--keep-folder-name"):
+                    keepFolderName = True
+                elif curArg in ("--skip-hash"):
+                    skipHash = True
+                elif curArg in ("--use-mod-time"):
+                    useModTime = True
+                  
+                else:
+                    startPaths.append(curArg)
+
 	except:
 		print "Requires argument of starting directory be provided!"
 		sys.exit(1)
 
-	startPath = os.path.abspath(startPath)
-	rootDirName = os.path.basename(startPath)
-	outFileName = startPath + '/' + outFileName
 
-	walkDirs(startPath, 0)
+        print "Selected paths:"
+        for p in startPaths: print p
+        if keepFolderName: print "--keep-folder-name = Keeping original folder names"
+        if keepSequence: print "--keep-sequence = Keeping sequences in filenames"
+        if skipHash: print "--skip-hash = Skip md5 hashing"
+        if useModTime: print "--use-mod-time = Use modified timestamp for naming"
 
-	if outFileOpen:
-		outFile.close()
-		formatTitle("Log File: "+outFileName)
-	else:
-		formatTitle("Log File: Not created, no actions applied.")
+        if not confirm("Do you want to proceed?"):
+	    print("Exiting...")
+            sys.exit(0)
+
+
+        for startPath in startPaths:
+	    startPath = os.path.abspath(startPath)
+            if not (os.path.isdir(startPath)):
+                print "Error: "+startPath+" does not exist!"
+		sys.exit(1)
+
+	    rootDirName = os.path.basename(startPath)
+	    outFileName = startPath + '/' + outFileName
+
+	    walkDirs(startPath, 0)
+
+	    if outFileOpen:
+	    	outFile.close()
+	    	formatTitle("Log File: "+outFileName)
+	    else:
+	    	formatTitle("Log File: Not created, no actions applied.")
 
 
 if __name__ == "__main__":
