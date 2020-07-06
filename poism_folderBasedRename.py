@@ -31,7 +31,8 @@ useModTime = False
 # Only the following file extensions will be processed
 fileTypesToProcess = {
 	'image': [ 'jpg', 'tga', 'tif', 'bmp', 'gif', 'png' ],
-	'video': [ 'mp4', 'mov', 'mpg', 'wmv', 'flv', 'webm' ]
+	'video': [ 'mp4', 'mov', 'mpg', 'wmv', 'flv', 'webm', 'avi', 'mkv', 'ogm' ],
+	'audio': [ 'mp3', 'ogg', 'wav', 'wma', 'wmv' ]
 }
 # The following defines what types of files to delete if found
 unwantedFiles = {
