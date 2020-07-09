@@ -4,6 +4,8 @@
         Optional args: --keep-sequence = Keeping sequences in filenames eg. DCIM_001 keeps 001
         Optional args: --skip-hash = Skip md5 hashing
         Optional args: --use-mod-time = Use modified timestamp for naming
+        Optional args: --keep-folder-name = Use original folder names for naming
+        Optional args: --strict-folder-name = Use strict alphanumeric from folders (else -_. symbols are retained)
 	All files below the startFolder will be renamed based on their parents
 	and with the first characters from the md5 hash of the file itself.
 	eg. startFolder/Some Folder/file.jpeg
@@ -24,6 +26,7 @@ outWriter = None
 outFileOpen = False
 keepSequence = False
 keepFolderName = False
+strictFolderName = False
 skipHash = False
 useModTime = False
 
@@ -50,14 +53,24 @@ def md5(fileName):
 	return md5res
 
 def upper_replace(match):
-    return "-"+match.group(1).upper()+"-"
+    pre = match.group(1)
+    post = match.group(3)
+    if pre.isspace():
+        pre = "_"
+    if post.isspace():
+        post = "_"
+    return pre+match.group(2).upper()+post # _NYC-
 
 def sanitize(str):
-        global keepFolderName
+        global keepFolderName,strictFolderName
         if not keepFolderName:
 	    #note we are not replacing "/" here...
 	    str = re.sub('(?!^)([A-Z][a-z]+)', r' \1', str) #make "/CrazyFolder/! bad SUBFOLDER-0/file" into "/ Crazy Folder/! bad SUBFOLDER-0/file"
-	    str = re.sub(r'[^a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER 0/file"
+            if strictFolderName:
+	        str = re.sub(r'[^a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER 0/file"
+            else:
+	        str = re.sub(r'[^\-\_\.a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER-0/file"
+
 	    parts = str.split(os.path.sep)
 	    for (p,part) in enumerate(parts):
 	    	# process individual folder names, if folder is all CAPS we will retain that, otherwise will Capitalize
@@ -65,7 +78,8 @@ def sanitize(str):
                     allcaps = re.findall(r'[-_. ]([A-Z][A-Z]?[A-Z])[-_. ]', part) # except we will also retain 2-3 character all caps codes, eg. NYC NY NM etc. FIXME: bug occurs if you have adjacent sets of matches, eg. -NM-NYC-AZ- would result in -NM-Nyc-AZ- 
 	    	    parts[p] = part.title() #result: "/ Crazy Folder/  Bad Subfolder 0/File"
                     for caps in allcaps:
-                        parts[p] = re.sub(r'[-_. ]('+caps.title()+')[-_. ]', upper_replace, parts[p], 1)
+                        # caps[0] = [-_. ] , caps[1] = CAPS, caps[2] = [-_.]
+                        parts[p] = re.sub(r'([-_. ])('+caps.title()+')([-_. ])', upper_replace, parts[p]) #, 1)
 	    		
 	    str = os.path.join('',*parts) #put it back together
 	str = re.sub(r"\s+", '', str) #remove all spaces, result: "/CrazyFolder/BadSubfolder0/File"
@@ -292,6 +306,8 @@ def printHelp():
         Optional args: --keep-sequence = Keeping sequences in filenames eg. DCIM_001 keeps 001
         Optional args: --skip-hash = Skip md5 hashing
         Optional args: --use-mod-time = Use modified timestamp for naming
+        Optional args: --keep-folder-name = Use original folder names for naming
+        Optional args: --strict-folder-name = Use strict alphanumeric from folders (else -_. symbols are retained)
 	All files below the startFolder will be renamed based on their parents
 	and with the first characters from the md5 hash of the file itself.
 	eg. startFolder/Some Folder/file.jpeg
@@ -302,7 +318,7 @@ def printHelp():
 
 
 def main():
-	global startPaths, startPath, rootDirName, outFileName, outFileOpen, outFile, keepSequence, keepFolderName, skipHash, useModTime
+	global startPaths, startPath, rootDirName, outFileName, outFileOpen, outFile, keepSequence, keepFolderName, strictFolderName, skipHash, useModTime
         argList = sys.argv[1:]
 	try:
 
@@ -318,6 +334,8 @@ def main():
                     keepSequence = True
                 elif curArg in ("--keep-folder-name"):
                     keepFolderName = True
+                elif curArg in ("--strict-folder-name"):
+                    strictFolderName = True
                 elif curArg in ("--skip-hash"):
                     skipHash = True
                 elif curArg in ("--use-mod-time"):
@@ -334,6 +352,7 @@ def main():
         print "Selected paths:"
         for p in startPaths: print p
         if keepFolderName: print "--keep-folder-name = Keeping original folder names"
+        if strictFolderName: print "--strict-folder-name = Use strict alphanumeric from folders (else -_. symbols are retained)"
         if keepSequence: print "--keep-sequence = Keeping sequences in filenames"
         if skipHash: print "--skip-hash = Skip md5 hashing"
         if useModTime: print "--use-mod-time = Use modified timestamp for naming"
