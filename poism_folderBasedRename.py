@@ -286,15 +286,8 @@ def walkDirs(path, level=None):
 		for dirName in dirList:
 			walkDirs(path + '/' + dirName)
 
-
-def main():
-	global startPaths, startPath, rootDirName, outFileName, outFileOpen, outFile, keepSequence, keepFolderName, skipHash, useModTime
-        argList = sys.argv[1:]
-	try:
-
-            for curArg in argList:
-                if curArg in ("--help", "-h"):
-	            print ('''
+def printHelp():
+	print ('''
         Required args: /path/to/startFolder/
         Optional args: --keep-sequence = Keeping sequences in filenames eg. DCIM_001 keeps 001
         Optional args: --skip-hash = Skip md5 hashing
@@ -306,6 +299,20 @@ def main():
 	Junk files and empty null files will be deleted.
 	A timestamped csv log will be saved in the startingDirectory.
         ''')
+
+
+def main():
+	global startPaths, startPath, rootDirName, outFileName, outFileOpen, outFile, keepSequence, keepFolderName, skipHash, useModTime
+        argList = sys.argv[1:]
+	try:
+
+            if not argList:
+                printHelp()
+                sys.exit(1)
+
+            for curArg in argList:
+                if curArg in ("--help", "-h"):
+                    printHelp()
 		    sys.exit(0)
                 elif curArg in ("--keep-sequence"):
                     keepSequence = True
