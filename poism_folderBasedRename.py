@@ -3,6 +3,7 @@
 	Required args: /path/to/startFolder/
         Optional args: --keep-sequence = Keeping sequences in filenames eg. DCIM_001 keeps 001
         Optional args: --skip-hash = Skip md5 hashing
+        Optional args: --hash-only = Keep original name, just append md5 hash
         Optional args: --use-mod-time = Use modified timestamp for naming
         Optional args: --keep-folder-name = Use original folder names for naming
         Optional args: --strict-folder-name = Use strict alphanumeric from folders (else -_. symbols are retained)
@@ -28,6 +29,7 @@ keepSequence = False
 keepFolderName = False
 strictFolderName = False
 skipHash = False
+hashOnly = False
 useModTime = False
 
 
@@ -124,15 +126,19 @@ def checkIfUnwanted(criteria,value):
 
 
 def getNewName(hash, name, ext, relPath,modTime):
-	newName = sanitize( relPath )
-        global keepSequence,skipHash
-        if keepSequence:
-            foundSequence = re.match(r'.*?([0-9]+)$', name)
-            if foundSequence:
-                foundSequence=foundSequence.group(1)
-                newName = newName +"-"+ foundSequence
+        global keepSequence,skipHash,hashOnly
+        if hashOnly:
+            newName = name
+        else:
+	    newName = sanitize( relPath )
+            if keepSequence:
+                foundSequence = re.match(r'.*?([0-9]+)$', name)
+                if foundSequence:
+                    foundSequence=foundSequence.group(1)
+                    newName = newName +"-"+ foundSequence
 
-	newName = newName.replace('/', '_')
+	    newName = newName.replace('/', '_')
+
         if skipHash:
             newName = newName + ext
         else:
@@ -318,7 +324,7 @@ def printHelp():
 
 
 def main():
-	global startPaths, startPath, rootDirName, outFileName, outFileOpen, outFile, keepSequence, keepFolderName, strictFolderName, skipHash, useModTime
+	global startPaths, startPath, rootDirName, outFileName, outFileOpen, outFile, keepSequence, keepFolderName, strictFolderName, skipHash, hashOnly, useModTime
         argList = sys.argv[1:]
 	try:
 
@@ -338,6 +344,8 @@ def main():
                     strictFolderName = True
                 elif curArg in ("--skip-hash"):
                     skipHash = True
+                elif curArg in ("--hash-only"):
+                    hashOnly = True
                 elif curArg in ("--use-mod-time"):
                     useModTime = True
                   
