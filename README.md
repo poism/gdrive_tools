@@ -17,6 +17,8 @@ If ever the folder names are rather garbage, consider using --strict-folder-name
 Else by default folder names will be stripped of all non-alphanumeric characters except -_. and these will be applied to filenames
 
 
+```
+
 sangpo@pobox:~/git/gdrive_tools$ python poism_folderBasedRename.py --help
 
         Required args: /path/to/startFolder/
@@ -91,3 +93,4 @@ Press CTRL+c to Quit or continue to next folder. (ENTER key)
 Log File: /datapool/media/photos/20200708_NM_MavicAir2/renamed-20200708_222859.csv
 ==================================================================================
 
+```
