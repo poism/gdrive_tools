@@ -66,17 +66,17 @@ def upper_replace(match):
 def sanitize(str):
         global keepFolderName,strictFolderName
         if not keepFolderName:
-	    #note we are not replacing "/" here...
-	    str = re.sub('(?!^)([A-Z][a-z]+)', r' \1', str) #make "/CrazyFolder/! bad SUBFOLDER-0/file" into "/ Crazy Folder/! bad SUBFOLDER-0/file"
+            #note we are not replacing "/" here...
+            str = re.sub('(?!^)([A-Z][a-z]+)', r' \1', str) #make "/CrazyFolder/! bad SUBFOLDER-0/file" into "/ Crazy Folder/! bad SUBFOLDER-0/file"
             if strictFolderName:
-	        str = re.sub(r'[^a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER 0/file"
+                str = re.sub(r'[^a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER 0/file"
             else:
-	        str = re.sub(r'[^\-\_\.a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER-0/file"
+                str = re.sub(r'[^\-\_\.a-zA-Z0-9/]+', ' ', str) #result: "/ Crazy Folder/  bad SUBFOLDER-0/file"
 
-	    parts = str.split(os.path.sep)
-	    for (p,part) in enumerate(parts):
-	    	# process individual folder names, if folder is all CAPS we will retain that, otherwise will Capitalize
-	    	if not part.isupper(): 
+            parts = str.split(os.path.sep)
+            for (p,part) in enumerate(parts):
+            	# process individual folder names, if folder is all CAPS we will retain that, otherwise will Capitalize
+            	if not part.isupper(): 
                     allcaps = re.findall(r'[-_. ]([A-Z][A-Z]?[A-Z])[-_. ]', part) # except we will also retain 2-3 character all caps codes, eg. NYC NY NM etc. FIXME: bug occurs if you have adjacent sets of matches, eg. -NM-NYC-AZ- would result in -NM-Nyc-AZ- 
 	    	    parts[p] = part.title() #result: "/ Crazy Folder/  Bad Subfolder 0/File"
                     for caps in allcaps:
